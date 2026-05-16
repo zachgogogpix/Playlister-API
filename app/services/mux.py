@@ -22,7 +22,15 @@ def build_mp4_url(playback_id: str) -> str:
     return f"https://stream.mux.com/{playback_id}/capped-1080p.mp4"
 
 
-async def enable_mp4_support(asset_id: str):
+async def enable_mp4_support(asset_id: str) -> str:
+    """
+    Enable MP4 support for a Mux asset.
+
+    Returns:
+        "already_ready" - Asset is already prepared, skip waiting
+        "enabled" - MP4 support was just enabled, needs wait
+        "already_enabled" - MP4 support was already enabled, needs wait
+    """
     async with httpx.AsyncClient() as client:
         resp = await client.put(
             f"{MUX_BASE}/assets/{asset_id}/mp4-support",
@@ -30,8 +38,28 @@ async def enable_mp4_support(asset_id: str):
             auth=_auth(),
             timeout=30,
         )
-        if resp.status_code not in (200, 201, 409):
-            resp.raise_for_status()
+
+        # 200/201: Successfully enabled
+        if resp.status_code in (200, 201):
+            return "enabled"
+
+        # 409: Already enabled
+        if resp.status_code == 409:
+            return "already_enabled"
+
+        # 400 with "invalid": Asset is already prepared
+        if resp.status_code == 400:
+            try:
+                error_data = resp.json()
+                error_msg = str(error_data).lower()
+                if "invalid" in error_msg:
+                    return "already_ready"
+            except:
+                pass
+
+        # Other errors: raise
+        resp.raise_for_status()
+        return "enabled"
 
 
 async def wait_for_mp4_ready(asset_id: str, poll_interval: float = 4.0, timeout: float = 300.0):

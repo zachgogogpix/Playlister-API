@@ -47,10 +47,16 @@ async def _clip_event_stream(video_id: int):
         yield event("status", {"step": 1, "message": "Enabling Mux MP4 support..."})
 
         if asset_id:
-            await enable_mp4_support(asset_id)
-            yield event("status", {"step": 2, "message": "Waiting for MP4 render (may take 1-2 minutes)..."})
-            await wait_for_mp4_ready(asset_id)
-            yield event("status", {"step": 3, "message": "MP4 ready. Generating clip..."})
+            status = await enable_mp4_support(asset_id)
+
+            if status == "already_ready":
+                # Asset is already prepared, skip waiting
+                yield event("status", {"step": 3, "message": "Asset ready. Generating clip..."})
+            else:
+                # Need to wait for MP4 rendering (status: "enabled" or "already_enabled")
+                yield event("status", {"step": 2, "message": "Waiting for MP4 render (may take 1-2 minutes)..."})
+                await wait_for_mp4_ready(asset_id)
+                yield event("status", {"step": 3, "message": "MP4 ready. Generating clip..."})
         else:
             yield event("status", {"step": 3, "message": "Generating clip..."})
 
