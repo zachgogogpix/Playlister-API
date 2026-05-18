@@ -65,6 +65,8 @@ async def list_videos(
         idx += 1
 
     conditions.insert(0, "(originalreleasedate IS NULL OR originalreleasedate <= CURRENT_DATE)")
+    conditions.insert(0, "is_active = TRUE")
+    conditions.insert(0, "partner_account IN ('sony', 'IIP-DDS', 'DashGo', 'DPM Network', 'Horus', 'gogopix', 'Ryan Celsius Sounds', 'orchard')")
     where = "WHERE " + " AND ".join(conditions)
     offset = (page - 1) * limit
 
@@ -88,7 +90,10 @@ async def get_partners():
     pool = get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(
-            "SELECT DISTINCT partner_account FROM video WHERE partner_account IS NOT NULL ORDER BY partner_account"
+            """SELECT DISTINCT partner_account FROM video
+               WHERE partner_account IN ('sony', 'IIP-DDS', 'DashGo', 'DPM Network', 'Horus', 'gogopix', 'Ryan Celsius Sounds', 'orchard')
+               AND is_active = TRUE
+               ORDER BY partner_account"""
         )
     return [r["partner_account"] for r in rows]
 

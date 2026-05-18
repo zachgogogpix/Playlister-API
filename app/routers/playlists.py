@@ -25,9 +25,12 @@ async def list_playlists():
     async with pool.acquire() as conn:
         rows = await conn.fetch(
             f"""SELECT p.id, p.name, p.image_url, p.created_at, p.updated_at, p.hide_playlist,
-                       COUNT(pv.id)::int AS video_count
+                       COUNT(v.id)::int AS video_count
                 FROM playlist p
                 LEFT JOIN playlist_video pv ON pv.playlist_id = p.id
+                LEFT JOIN video v ON v.id = pv.video_id
+                    AND v.is_active = TRUE
+                    AND v.partner_account IN ('sony', 'IIP-DDS', 'DashGo', 'DPM Network', 'Horus', 'gogopix', 'Ryan Celsius Sounds', 'orchard')
                 WHERE p.hide_playlist = FALSE
                 GROUP BY p.id
                 ORDER BY p.updated_at DESC NULLS LAST, p.id DESC"""
@@ -90,6 +93,8 @@ async def get_playlist(playlist_id: int):
                FROM playlist_video pv
                JOIN video v ON v.id = pv.video_id
                WHERE pv.playlist_id = $1
+                 AND v.is_active = TRUE
+                 AND v.partner_account IN ('sony', 'IIP-DDS', 'DashGo', 'DPM Network', 'Horus', 'gogopix', 'Ryan Celsius Sounds', 'orchard')
                ORDER BY pv."order" ASC, pv.id ASC""",
             playlist_id
         )
