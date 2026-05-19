@@ -19,7 +19,7 @@ async def lifespan(app: FastAPI):
     await close_pool()
 
 
-app = FastAPI(title="Vibe Stream API", version="1.3.0", lifespan=lifespan)
+app = FastAPI(title="Vibe Stream API", version="1.4.0", lifespan=lifespan)
 
 # Get UI origin from environment variable
 ui_origin = os.getenv("UI_ORIGIN", "http://localhost:5173")
@@ -43,4 +43,4 @@ app.mount("/clips", StaticFiles(directory=clips_dir), name="clips")
 
 @app.get("/")
 async def root():
-    return {"service": "Vibe Stream API", "version": "1.3.0"}
+    return {"service": "Vibe Stream API", "version": "1.4.0"}

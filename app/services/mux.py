@@ -47,12 +47,13 @@ async def enable_mp4_support(asset_id: str) -> str:
         if resp.status_code == 409:
             return "already_enabled"
 
-        # 400 with "invalid": Asset is already prepared
+        # 400: Asset is already prepared or MP4 support already exists
         if resp.status_code == 400:
             try:
                 error_data = resp.json()
                 error_msg = str(error_data).lower()
-                if "invalid" in error_msg:
+                # If MP4 support is already configured or asset is already prepared
+                if "invalid" in error_msg or "mp4" in error_msg or "support" in error_msg:
                     return "already_ready"
             except:
                 pass

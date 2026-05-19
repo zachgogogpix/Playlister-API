@@ -11,6 +11,7 @@ from ..services.clipper import trim_clip
 router = APIRouter()
 
 CLIPS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "clips")
+API_URL = os.getenv("API_URL", "http://localhost:8000")
 
 
 async def _clip_event_stream(video_id: int):
@@ -69,7 +70,9 @@ async def _clip_event_stream(video_id: int):
         with open(filepath, "wb") as f:
             f.write(clip_bytes)
 
-        yield event("done", {"download_url": f"/clips/{filename}", "filename": filename})
+        # Return absolute URL so frontend can download from API server
+        download_url = f"{API_URL}/clips/{filename}"
+        yield event("done", {"download_url": download_url, "filename": filename})
 
     except Exception as e:
         yield event("error", {"message": str(e)})
