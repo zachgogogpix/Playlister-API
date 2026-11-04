@@ -32,6 +32,9 @@ async def list_videos(
     partner_account: Optional[str] = None,
     date_op: Optional[str] = Query(None, pattern="^(eq|gt|lt)$"),
     date_val: Optional[str] = None,
+    genre: Optional[str] = Query(None, description="Emoji key value from the 'genre' group"),
+    mood: Optional[str] = Query(None, description="Emoji key value from the 'mood' group"),
+    tags: Optional[str] = Query(None, description="Emoji key value from the 'tags' group"),
 ):
     pool = get_pool()
     conditions = []
@@ -63,6 +66,17 @@ async def list_videos(
         conditions.append(f"originalreleasedate {op_map[date_op]} ${idx}::date")
         params.append(date_val)
         idx += 1
+
+    # Emoji key filters (Vibe Machine): a video must carry every key supplied.
+    for key_group, key_value in (("genre", genre), ("mood", mood), ("tags", tags)):
+        if key_value:
+            conditions.append(
+                f"""EXISTS (SELECT 1 FROM video_emoji_keys k
+                           WHERE k.video_id = video.id
+                             AND k.key_group = ${idx} AND k.key_value = ${idx+1})"""
+            )
+            params.extend([key_group, key_value])
+            idx += 2
 
     conditions.insert(0, "(originalreleasedate IS NULL OR originalreleasedate <= CURRENT_DATE)")
     conditions.insert(0, "is_active = TRUE")

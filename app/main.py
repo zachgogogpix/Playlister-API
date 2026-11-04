@@ -6,7 +6,7 @@ import os
 from dotenv import load_dotenv
 
 from .database import init_pool, close_pool, create_tables
-from .routers import videos, playlists, clips
+from .routers import videos, playlists, clips, emoji_keys
 
 load_dotenv()
 
@@ -35,6 +35,7 @@ app.add_middleware(
 app.include_router(videos.router, prefix="/api/videos", tags=["videos"])
 app.include_router(playlists.router, prefix="/api/playlists", tags=["playlists"])
 app.include_router(clips.router, prefix="/api/clips", tags=["clips"])
+app.include_router(emoji_keys.router, prefix="/api", tags=["emoji-keys"])
 
 clips_dir = os.path.join(os.path.dirname(__file__), "..", "clips")
 os.makedirs(clips_dir, exist_ok=True)
