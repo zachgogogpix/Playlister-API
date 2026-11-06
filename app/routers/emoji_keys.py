@@ -1,10 +1,14 @@
+import logging
 import time
 from typing import Dict, List
 
+import asyncpg
 from fastapi import APIRouter, Response
 from fastapi.responses import JSONResponse
 
 from ..database import get_pool
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -112,17 +116,24 @@ async def patch_video_emoji_keys(video_id: int, body: Dict[str, List[str]]):
                     )
 
         # All groups validated: apply atomically so a request never half-applies.
-        async with conn.transaction():
-            for key_group, key_values in updates.items():
-                await conn.execute(
-                    "DELETE FROM video_emoji_keys WHERE video_id = $1 AND key_group = $2",
-                    video_id, key_group,
-                )
-                if key_values:
+        try:
+            async with conn.transaction():
+                for key_group, key_values in updates.items():
                     await conn.execute(
-                        """INSERT INTO video_emoji_keys (video_id, key_group, key_value)
-                           SELECT $1, $2, unnest($3::text[])""",
-                        video_id, key_group, key_values,
+                        "DELETE FROM video_emoji_keys WHERE video_id = $1 AND key_group = $2",
+                        video_id, key_group,
                     )
+                    if key_values:
+                        await conn.execute(
+                            """INSERT INTO video_emoji_keys (video_id, key_group, key_value)
+                               SELECT $1, $2, unnest($3::text[])""",
+                            video_id, key_group, key_values,
+                        )
+        except (asyncpg.PostgresError, asyncpg.InterfaceError) as e:
+            logger.exception(
+                "Failed to save emoji keys: video_id=%s body=%r error=%s sqlstate=%s",
+                video_id, body, type(e).__name__, getattr(e, "sqlstate", None),
+            )
+            return _error(500, "Failed to save emoji keys")
 
         return await _fetch_video_keys(conn, video_id)
