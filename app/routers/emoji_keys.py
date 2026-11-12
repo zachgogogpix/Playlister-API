@@ -1,5 +1,6 @@
 import logging
 import time
+import uuid
 from typing import Dict, List
 
 import asyncpg
@@ -124,10 +125,14 @@ async def patch_video_emoji_keys(video_id: int, body: Dict[str, List[str]]):
                         video_id, key_group,
                     )
                     if key_values:
+                        # video_emoji_keys.id is a UUID with no DB default, so
+                        # generate one per row here.
                         await conn.execute(
-                            """INSERT INTO video_emoji_keys (video_id, key_group, key_value)
-                               SELECT $1, $2, unnest($3::text[])""",
-                            video_id, key_group, key_values,
+                            """INSERT INTO video_emoji_keys (id, video_id, key_group, key_value)
+                               SELECT k.id, $1, $2, k.key_value
+                               FROM unnest($3::uuid[], $4::text[]) AS k(id, key_value)""",
+                            video_id, key_group,
+                            [uuid.uuid4() for _ in key_values], key_values,
                         )
         except (asyncpg.PostgresError, asyncpg.InterfaceError) as e:
             logger.exception(
